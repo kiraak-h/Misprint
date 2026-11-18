@@ -1,0 +1,6 @@
+{
+  "name": "MISPRINT",
+  "description": "The world is printed wrong. Fix it before it moves. An experimental two-layer printmaking spatial puzzle game.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
