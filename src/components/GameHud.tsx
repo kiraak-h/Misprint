@@ -139,6 +139,25 @@ export function GameHud({
           <p className="text-xs text-[#555961] mt-0.5 leading-snug line-clamp-2 sm:line-clamp-none">
             {hud.instruction}
           </p>
+
+          {/* Interactive Tutorial Guide for First Proof */}
+          {hud.levelNumber === 1 && (
+            <div className="mt-2 pt-1.5 border-t border-[#1e2024]/12 flex items-center gap-1.5 text-xs">
+              {hud.status === 'lost' ? (
+                <span className="text-[#c93b2b] font-medium animate-pulse">
+                  ↺ Dot slipped! Tap Rewind (Z) to reverse time.
+                </span>
+              ) : allSafeConnected ? (
+                <span className="text-[#3a6b52] font-medium">
+                  ✓ Mark registered! Bridge is printed — Dot advances to postbox.
+                </span>
+              ) : (
+                <span className="text-[#2f5485] font-medium">
+                  💡 Drag the blue Ghost sheet right to align mark ○.
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

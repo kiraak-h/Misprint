@@ -29,7 +29,7 @@ export function PauseModal({
       aria-label="Game Paused"
       className="fixed inset-0 z-20 flex items-center justify-center bg-[#1e2024]/45 pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]"
     >
-      <div className="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto bg-[#faf7f0] border-2 border-[#1e2024] rounded-md p-5 sm:p-6 shadow-lg">
+      <div className="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto modal-scroll-area bg-[#faf7f0] border-2 border-[#1e2024] rounded-md p-5 sm:p-6 shadow-lg">
         <p className="text-xs font-mono-tech text-[#555961]">
           {levelNumber === 0 ? 'Sandbox 00' : `Proof ${String(levelNumber).padStart(2, '0')}`} · {levelTitle}
         </p>
@@ -111,7 +111,7 @@ export function OutcomeModal({
       aria-label={isVictory ? 'Proof Delivered' : 'Misprint Error'}
       className="fixed inset-0 z-20 flex items-center justify-center bg-[#1e2024]/45 pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]"
     >
-      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-[#faf7f0] border-2 border-[#1e2024] rounded-md p-5 sm:p-6 shadow-lg">
+      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto modal-scroll-area bg-[#faf7f0] border-2 border-[#1e2024] rounded-md p-5 sm:p-6 shadow-lg">
         <p className="text-xs font-mono-tech text-[#555961]">
           {hud.levelNumber === 0 ? 'Sandbox 00' : `Proof ${String(hud.levelNumber).padStart(2, '0')}`} · {hud.levelTitle}
         </p>
@@ -241,7 +241,7 @@ export function LevelSelectModal({
 }: LevelSelectModalProps) {
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-[#f4efe4]/92 pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] overflow-y-auto">
-      <div className="w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto bg-[#faf7f0] border-2 border-[#1e2024] rounded-md p-5 sm:p-8 shadow-lg my-auto">
+      <div className="w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto modal-scroll-area bg-[#faf7f0] border-2 border-[#1e2024] rounded-md p-5 sm:p-8 shadow-lg my-auto">
         <div className="flex items-center justify-between gap-4 border-b border-[#1e2024]/15 pb-4">
           <div>
             <p className="text-xs font-mono-tech text-[#2f5485]">Chapter 1 · First Folio</p>
@@ -285,11 +285,23 @@ export function LevelSelectModal({
             const unlocked = unlockAll || lvl.number <= highestUnlocked;
             const completed = Boolean(p?.completed);
 
+            const chapterTitle =
+              lvl.number === 1
+                ? 'Chapter 1 · The First Proofs'
+                : lvl.number === 4
+                  ? 'Chapter 2 · Dangerous Impressions'
+                  : lvl.number === 7
+                    ? 'Chapter 3 · Master Folio'
+                    : null;
+
             return (
-              <div
-                key={lvl.id}
-                className="py-3.5 flex items-center justify-between gap-4"
-              >
+              <div key={lvl.id}>
+                {chapterTitle && (
+                  <div className="pt-4 pb-2 text-xs font-mono-tech font-bold uppercase tracking-wider text-[#2f5485] border-t border-[#1e2024]/15 mt-2">
+                    {chapterTitle}
+                  </div>
+                )}
+                <div className="py-3.5 flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2.5">
                     <span className="font-mono-tech text-xs text-[#555961]">
@@ -333,8 +345,9 @@ export function LevelSelectModal({
                   )}
                 </button>
               </div>
-            );
-          })}
+            </div>
+          );
+        })}
         </div>
       </div>
     </div>
@@ -361,7 +374,7 @@ export function SettingsModal({
       aria-label="Settings"
       className="fixed inset-0 z-30 flex items-center justify-center bg-[#1e2024]/45 pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]"
     >
-      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-[#faf7f0] border-2 border-[#1e2024] rounded-md p-5 sm:p-6 shadow-lg">
+      <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto modal-scroll-area bg-[#faf7f0] border-2 border-[#1e2024] rounded-md p-5 sm:p-6 shadow-lg">
         <div className="flex items-center justify-between border-b border-[#1e2024]/15 pb-3">
           <h2 className="font-display text-2xl font-bold text-[#1e2024]">Press Settings</h2>
           <button
@@ -415,8 +428,8 @@ export function SettingsModal({
 
           <label className="py-3 flex items-center justify-between gap-4 cursor-pointer">
             <div>
-              <div className="text-sm font-medium text-[#1e2024]">Unlock All 5 Proofs</div>
-              <div className="text-xs text-[#555961]">Jump directly to any chapter proof</div>
+              <div className="text-sm font-medium text-[#1e2024]">Unlock All 9 Proofs</div>
+              <div className="text-xs text-[#555961]">Jump directly to any campaign proof</div>
             </div>
             <input
               type="checkbox"

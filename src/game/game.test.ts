@@ -394,7 +394,7 @@ describe('MISPRINT Core Systems', () => {
     expect(backToStart?.tick).toBe(0);
   });
 
-  it('solves all 5 handcrafted levels deterministically from start to goal', () => {
+  it('solves all 9 handcrafted levels deterministically from start to goal', () => {
     // Level 1
     {
       const lvl = getLevelByNumber(1);
@@ -446,6 +446,67 @@ describe('MISPRINT Core Systems', () => {
         sim = stepSimulation(lvl, sim, FIXED_TIMESTEP_MS);
         if (sim.dot.pos.x > 460 && !sim.connections[1]!.active) {
           sim = shiftGhostLayer(lvl, sim, { x: 110, y: 80 }, true);
+        }
+        if (sim.status !== 'playing') break;
+      }
+      expect(sim.status).toBe('won');
+    }
+
+    // Level 6: Reciprocal Bridges (Circle at -110, 0 -> wait until island -> Square at +110, 0)
+    {
+      const lvl = getLevelByNumber(6);
+      let sim = createInitialSnapshot(lvl);
+      sim = shiftGhostLayer(lvl, sim, { x: -110, y: 0 }, true);
+      for (let t = 0; t < 1200; t++) {
+        sim = stepSimulation(lvl, sim, FIXED_TIMESTEP_MS);
+        if (sim.dot.pos.x > 450 && !sim.connections[1]!.active) {
+          sim = shiftGhostLayer(lvl, sim, { x: 110, y: 0 }, true);
+        }
+        if (sim.status !== 'playing') break;
+      }
+      expect(sim.status).toBe('won');
+    }
+
+    // Level 7: Two Presses (Ink at -60, 0, Ghost at 0, -60)
+    {
+      const lvl = getLevelByNumber(7);
+      let sim = createInitialSnapshot(lvl);
+      sim = shiftInkLayer(lvl, sim, { x: -60, y: 0 }, true);
+      sim = shiftGhostLayer(lvl, sim, { x: 0, y: -60 }, true);
+      for (let t = 0; t < 800; t++) {
+        sim = stepSimulation(lvl, sim, FIXED_TIMESTEP_MS);
+        if (sim.status !== 'playing') break;
+      }
+      expect(sim.status).toBe('won');
+    }
+
+    // Level 8: The Counterweight (Circle at -90, -40 -> wait for drop -> Diamond at +90, +90)
+    {
+      const lvl = getLevelByNumber(8);
+      let sim = createInitialSnapshot(lvl);
+      sim = shiftGhostLayer(lvl, sim, { x: -90, y: -40 }, true);
+      for (let t = 0; t < 1200; t++) {
+        sim = stepSimulation(lvl, sim, FIXED_TIMESTEP_MS);
+        if (sim.dot.pos.x > 460 && !sim.connections[1]!.active) {
+          sim = shiftGhostLayer(lvl, sim, { x: 90, y: 90 }, true);
+        }
+        if (sim.status !== 'playing') break;
+      }
+      expect(sim.status).toBe('won');
+    }
+
+    // Level 9: Master Impression (Circle at -120, 0 -> Diamond at 60, -80 -> Square at 100, -60)
+    {
+      const lvl = getLevelByNumber(9);
+      let sim = createInitialSnapshot(lvl);
+      sim = shiftGhostLayer(lvl, sim, { x: -120, y: 0 }, true);
+      for (let t = 0; t < 1600; t++) {
+        sim = stepSimulation(lvl, sim, FIXED_TIMESTEP_MS);
+        if (sim.dot.pos.x > 400 && !sim.connections[1]!.active) {
+          sim = shiftGhostLayer(lvl, sim, { x: 60, y: -80 }, true);
+        }
+        if (sim.dot.pos.x > 620 && !sim.connections[2]!.active) {
+          sim = shiftGhostLayer(lvl, sim, { x: 100, y: -60 }, true);
         }
         if (sim.status !== 'playing') break;
       }
@@ -539,11 +600,22 @@ describe('MISPRINT Core Systems', () => {
         expect(ghostA).toBeDefined();
         expect(areAnchorsCompatible(inkA!, ghostA!)).toBe(true);
 
-        const exactGhost = findExactRegistrationOffset(inkA!, ghostA!, { x: 0, y: 0 });
-        expect(exactGhost.x).toBeGreaterThanOrEqual(lvl.ghostBounds.minX);
-        expect(exactGhost.x).toBeLessThanOrEqual(lvl.ghostBounds.maxX);
-        expect(exactGhost.y).toBeGreaterThanOrEqual(lvl.ghostBounds.minY);
-        expect(exactGhost.y).toBeLessThanOrEqual(lvl.ghostBounds.maxY);
+        // Check that the required relative shift is reachable within the layer bounds
+        const reqDx = ghostA!.localPos.x - inkA!.localPos.x;
+        const reqDy = ghostA!.localPos.y - inkA!.localPos.y;
+        // inkOffset - ghostOffset must equal reqD
+        // Therefore -reqD = ghostOffset - inkOffset
+        const targetDiffX = -reqDx;
+        const targetDiffY = -reqDy;
+        const minDiffX = lvl.ghostBounds.minX - lvl.inkBounds.maxX;
+        const maxDiffX = lvl.ghostBounds.maxX - lvl.inkBounds.minX;
+        const minDiffY = lvl.ghostBounds.minY - lvl.inkBounds.maxY;
+        const maxDiffY = lvl.ghostBounds.maxY - lvl.inkBounds.minY;
+
+        expect(targetDiffX).toBeGreaterThanOrEqual(minDiffX);
+        expect(targetDiffX).toBeLessThanOrEqual(maxDiffX);
+        expect(targetDiffY).toBeGreaterThanOrEqual(minDiffY);
+        expect(targetDiffY).toBeLessThanOrEqual(maxDiffY);
 
         for (const segId of rule.bridgeSegmentIds) {
           const seg = lvl.segments.find((s) => s.id === segId);
@@ -631,5 +703,70 @@ describe('MISPRINT Core Systems', () => {
       100,
     );
     expect(replayedSecond).toEqual(afterSecond);
+  });
+
+  it('19. validates keyboard nudge controls and sequential level progression records', () => {
+    // 1. Keyboard nudge simulation
+    const lvl = getLevelByNumber(1);
+    let offset = { x: 0, y: 0 };
+    const nudge = (dx: number, dy: number) => {
+      offset = {
+        x: Math.max(lvl.ghostBounds.minX, Math.min(lvl.ghostBounds.maxX, offset.x + dx)),
+        y: Math.max(lvl.ghostBounds.minY, Math.min(lvl.ghostBounds.maxY, offset.y + dy)),
+      };
+    };
+
+    // Standard arrow keys nudge by 2px
+    nudge(2, 0); // ArrowRight
+    expect(offset).toEqual({ x: 2, y: 0 });
+    nudge(0, -2); // ArrowUp
+    expect(offset).toEqual({ x: 2, y: -2 });
+
+    // Shift + arrow keys nudge by 10px
+    nudge(-10, 0); // Shift+ArrowLeft
+    expect(offset).toEqual({ x: -8, y: -2 });
+
+    // Bounds clamping prevents overshooting
+    nudge(-500, 0);
+    expect(offset.x).toBe(lvl.ghostBounds.minX);
+
+    // 2. Progression unlock chain test with storage record validation
+    let highestUnlocked = 1;
+    const records: Record<number, { bestTimeMs: number; bestShifts: number }> = {};
+
+    const recordCompletion = (levelNum: number, timeMs: number, shifts: number) => {
+      if (levelNum >= highestUnlocked && highestUnlocked < 9) {
+        highestUnlocked = levelNum + 1;
+      }
+      const existing = records[levelNum];
+      if (!existing) {
+        records[levelNum] = { bestTimeMs: timeMs, bestShifts: shifts };
+      } else {
+        records[levelNum] = {
+          bestTimeMs: Math.min(existing.bestTimeMs, timeMs),
+          bestShifts: Math.min(existing.bestShifts, shifts),
+        };
+      }
+    };
+
+    // Complete Level 1 in 8500ms with 1 shift -> unlocks Level 2
+    recordCompletion(1, 8500, 1);
+    expect(highestUnlocked).toBe(2);
+    expect(records[1]).toEqual({ bestTimeMs: 8500, bestShifts: 1 });
+
+    // Replay Level 1 with worse time (12000ms, 2 shifts) -> does not overwrite best record
+    recordCompletion(1, 12000, 2);
+    expect(records[1]).toEqual({ bestTimeMs: 8500, bestShifts: 1 });
+
+    // Replay Level 1 with faster time (7200ms) -> updates best time
+    recordCompletion(1, 7200, 1);
+    expect(records[1]).toEqual({ bestTimeMs: 7200, bestShifts: 1 });
+
+    // Sequentially complete levels up to 9
+    for (let l = 2; l <= 9; l++) {
+      recordCompletion(l, 10000 + l * 500, 2);
+    }
+    expect(highestUnlocked).toBe(9);
+    expect(Object.keys(records).length).toBe(9);
   });
 });

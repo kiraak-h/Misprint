@@ -234,12 +234,102 @@ function drawPrintingPressMotif(g: Phaser.GameObjects.Graphics): void {
   }
 }
 
+function drawSuspensionGalleryMotif(g: Phaser.GameObjects.Graphics): void {
+  // Suspension bridge cables with timber pylons & balance pulleys over center island
+  const px1 = 280;
+  const px2 = 680;
+  const py = 150;
+
+  g.lineStyle(1.4, PRINT_PALETTE.charcoal, 0.22);
+  g.lineBetween(px1, py, px1, 350);
+  g.lineBetween(px2, py, px2, 350);
+
+  // Catonary suspension cable
+  g.beginPath();
+  g.moveTo(100, 200);
+  traceQuadPoints(g, 100, 200, 280, 150, 480, 230, 14);
+  traceQuadPoints(g, 480, 230, 680, 150, 860, 200, 14);
+  g.strokePath();
+
+  // Vertical suspender wire droppers
+  for (let x = 320; x <= 640; x += 32) {
+    const t = Math.abs(x - 480) / 200;
+    const cableY = 230 - (1 - t * t) * 80;
+    g.lineBetween(x, cableY, x, 345);
+  }
+}
+
+function drawBiaxialPressMotif(g: Phaser.GameObjects.Graphics): void {
+  // Mechanical double-screw press columns with vernier registration dials
+  const cx = 480;
+  const cy = 160;
+
+  // Horizontal guide rail
+  g.lineStyle(2, PRINT_PALETTE.charcoal, 0.2);
+  g.lineBetween(140, cy, 820, cy);
+  for (let x = 160; x <= 800; x += 40) {
+    g.lineBetween(x, cy - 6, x, cy + 6);
+  }
+
+  // Twin vertical acme lead screws
+  for (const sx of [310, 650]) {
+    g.lineStyle(2, PRINT_PALETTE.cobalt, 0.25);
+    g.lineBetween(sx, 100, sx, 420);
+    // Thread teeth
+    g.lineStyle(1, PRINT_PALETTE.charcoal, 0.18);
+    for (let y = 110; y <= 410; y += 14) {
+      g.lineBetween(sx - 8, y, sx + 8, y - 4);
+    }
+  }
+
+  // Central brass press wheel
+  g.lineStyle(1.8, PRINT_PALETTE.ochre, 0.4);
+  g.strokeCircle(cx, cy, 38);
+  g.strokeCircle(cx, cy, 14);
+  for (let a = 0; a < 6; a++) {
+    const ang = (a / 6) * Math.PI * 2;
+    g.lineBetween(cx, cy, cx + Math.cos(ang) * 38, cy + Math.sin(ang) * 38);
+  }
+}
+
+function drawAqueductGalleryMotif(g: Phaser.GameObjects.Graphics): void {
+  // Multi-tier roman aqueduct arches across the background
+  const baseY = 390;
+  for (let x = 180; x <= 780; x += 150) {
+    drawArch(g, x, baseY, 52, 90, 0.12);
+  }
+  // Upper gallery horizontal line
+  g.lineStyle(1.6, PRINT_PALETTE.charcoal, 0.18);
+  g.lineBetween(110, baseY - 90, 850, baseY - 90);
+}
+
+function drawGrandCathedralPressMotif(g: Phaser.GameObjects.Graphics): void {
+  // Majestic cathedral rose-window reticle & colossal press arch
+  const cx = 480;
+  const cy = 210;
+
+  // Outer gothic arch
+  g.lineStyle(2, PRINT_PALETTE.charcoal, 0.22);
+  drawArch(g, cx, 420, 140, 160, 0.16);
+
+  // Intricate rose window registration reticle
+  g.lineStyle(1.4, PRINT_PALETTE.cobalt, 0.28);
+  g.strokeCircle(cx, cy, 75);
+  g.strokeCircle(cx, cy, 45);
+  g.strokeCircle(cx, cy, 20);
+
+  for (let i = 0; i < 12; i++) {
+    const ang = (i / 12) * Math.PI * 2;
+    g.lineBetween(cx + Math.cos(ang) * 20, cy + Math.sin(ang) * 20, cx + Math.cos(ang) * 75, cy + Math.sin(ang) * 75);
+  }
+}
+
 export function drawLevelIllustration(
   g: Phaser.GameObjects.Graphics,
   level: LevelDefinition,
 ): void {
   // Architectural pilings & support struts under Ink slabs
-  const style = level.number === 2 || level.number === 4 ? 'masonry' : 'timber';
+  const style = level.number === 2 || level.number === 4 || level.number === 8 ? 'masonry' : 'timber';
   drawPlatformPilings(g, level.segments, style);
 
   // Roller rail tracks for any dynamic moving obstacles
@@ -272,6 +362,18 @@ export function drawLevelIllustration(
       break;
     case 5:
       drawPrintingPressMotif(g);
+      break;
+    case 6:
+      drawSuspensionGalleryMotif(g);
+      break;
+    case 7:
+      drawBiaxialPressMotif(g);
+      break;
+    case 8:
+      drawAqueductGalleryMotif(g);
+      break;
+    case 9:
+      drawGrandCathedralPressMotif(g);
       break;
     default:
       drawArch(g, 480, SHEET_BOTTOM_Y - 12, 65, 110, 0.08);

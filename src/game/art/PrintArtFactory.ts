@@ -379,10 +379,29 @@ function drawHandDrawnDotFrame(
   ctx.restore();
 }
 
-function drawGoalPostbox(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+function drawGoalPostbox(ctx: CanvasRenderingContext2D, w: number, h: number, delivered = false): void {
   ctx.clearRect(0, 0, w, h);
   const cx = w * 0.5 - 2;
   const baseY = h - 5;
+
+  // Celebratory golden aura when delivered
+  if (delivered) {
+    ctx.fillStyle = 'rgba(184, 131, 44, 0.16)';
+    ctx.beginPath();
+    ctx.arc(cx, baseY - 44, 34, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Delicate starburst rays
+    ctx.strokeStyle = 'rgba(184, 131, 44, 0.35)';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * 22, baseY - 44 + Math.sin(angle) * 22);
+      ctx.lineTo(cx + Math.cos(angle) * 32, baseY - 44 + Math.sin(angle) * 32);
+      ctx.stroke();
+    }
+  }
 
   // Ground contact shadow + cobblestone plinth
   ctx.fillStyle = 'rgba(30, 32, 36, 0.18)';
@@ -439,6 +458,23 @@ function drawGoalPostbox(ctx: CanvasRenderingContext2D, w: number, h: number): v
   ctx.fillStyle = '#1e2024';
   ctx.fillRect(cx - 9, baseY - 46.8, 18, 2);
 
+  // If delivered, show delivered envelope tucked in slot
+  if (delivered) {
+    ctx.fillStyle = '#faf7f0';
+    ctx.strokeStyle = '#1e2024';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(cx - 6, baseY - 54, 12, 8, 1);
+    ctx.fill();
+    ctx.stroke();
+
+    // Tiny vermilion wax stamp
+    ctx.fillStyle = '#c93b2b';
+    ctx.beginPath();
+    ctx.arc(cx, baseY - 50, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   // Brass courier emblem circle below slot
   ctx.fillStyle = '#b8832c';
   ctx.beginPath();
@@ -446,19 +482,23 @@ function drawGoalPostbox(ctx: CanvasRenderingContext2D, w: number, h: number): v
   ctx.fill();
   ctx.stroke();
 
-  // Golden delivery pennant flag on side
+  // Golden delivery pennant flag on side (raised when delivered)
+  const flagTopY = delivered ? baseY - 74 : baseY - 66;
+  const flagBottomY = delivered ? baseY - 64 : baseY - 56;
+  const flagMidY = delivered ? baseY - 69 : baseY - 61;
+
   ctx.strokeStyle = '#1e2024';
   ctx.lineWidth = 2.2;
   ctx.beginPath();
   ctx.moveTo(cx + 18, baseY - 40);
-  ctx.lineTo(cx + 18, baseY - 66);
+  ctx.lineTo(cx + 18, flagTopY);
   ctx.stroke();
 
   ctx.fillStyle = '#b8832c';
   ctx.beginPath();
-  ctx.moveTo(cx + 18, baseY - 66);
-  ctx.lineTo(cx + 31, baseY - 61);
-  ctx.lineTo(cx + 18, baseY - 56);
+  ctx.moveTo(cx + 18, flagTopY);
+  ctx.lineTo(cx + 31, flagMidY);
+  ctx.lineTo(cx + 18, flagBottomY);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -660,7 +700,8 @@ export function ensurePrintTextures(scene: Phaser.Scene): void {
 
   registerCanvas('paper-grain', 256, 256, drawCottonInkPaperTexture);
   registerCanvas('paper-vellum', 256, 256, drawVellumOverlayTexture);
-  registerCanvas('goal-postbox', 76, 80, drawGoalPostbox);
+  registerCanvas('goal-postbox', 76, 80, (ctx, w, h) => drawGoalPostbox(ctx, w, h, false));
+  registerCanvas('goal-postbox-delivered', 76, 80, (ctx, w, h) => drawGoalPostbox(ctx, w, h, true));
   registerCanvas('ink-spill', 128, 84, drawInkSpill);
   registerCanvas('press-roller', 64, 64, drawPressRoller);
 

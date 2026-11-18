@@ -131,6 +131,8 @@ export class MisprintScene extends Phaser.Scene {
   private lastFootPuffDist = 0;
   private cameraTrauma = 0;
   private worldScale = 1;
+  private ghostLayerRotation = 0;
+  private wasElevatedGhost = false;
 
   // Bound DOM listeners for cleanup
   private onWindowBlurBound = () => this.cancelActiveDrag();
@@ -469,9 +471,20 @@ export class MisprintScene extends Phaser.Scene {
             this.level,
             this.snapshot.inkOffset,
             this.snapshot.ghostOffset,
-            12,
+            14,
           );
           const finalTarget = snapTarget ?? this.snapshot.ghostOffset;
+          if (snapTarget) {
+            const anchor = this.level.anchors.find(
+              (a) => a.layer === 'ink' && this.level.connections.some((c) => c.inkAnchorId === a.id && !c.isHazardous),
+            );
+            if (anchor) {
+              const ax = anchor.localPos.x + this.snapshot.inkOffset.x;
+              const ay = anchor.localPos.y + this.snapshot.inkOffset.y;
+              this.spawnStampRing(ax, ay, PRINT_PALETTE.sage, anchor.tolerance);
+              this.spawnBurst(ax, ay, PRINT_PALETTE.sage, 6);
+            }
+          }
           this.applyGhostShift(finalTarget, true);
         }
       }
@@ -507,11 +520,17 @@ export class MisprintScene extends Phaser.Scene {
       if (this.isGameplayActive && !this.isPaused && this.snapshot.status === 'playing') {
         this.callbacks?.onPauseToggle();
       }
+    } else {
+      // Clear accumulated delta to prevent burst steps on tab return
+      this.accumulatorMs = 0;
     }
   }
 
   private handleWindowKeyDown(event: KeyboardEvent): void {
     if (!this.isGameplayActive) return;
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
 
     const action = this.inputController.handleKeyDown(event.key);
     if (!action) {
@@ -867,7 +886,8 @@ export class MisprintScene extends Phaser.Scene {
     }
   }
 
-  private drawGhostSheetBase(): void {
+  private drawGhostSheetBase(isElevated = false): void {
+    this.wasElevatedGhost = isElevated;
     const g = this.ghostSheetGraphics;
     g.clear();
 
@@ -876,16 +896,21 @@ export class MisprintScene extends Phaser.Scene {
     const gw = 560;
     const gh = 370;
 
-    // Soft vellum elevation shadow
-    g.fillStyle(PRINT_PALETTE.cobalt, 0.08);
-    g.fillRoundedRect(gx + 5, gy + 7, gw, gh, 5);
+    // Vellum elevation shadow: deeper and offset when lifted
+    if (isElevated) {
+      g.fillStyle(PRINT_PALETTE.cobalt, 0.15);
+      g.fillRoundedRect(gx + 8, gy + 12, gw, gh, 7);
+    } else {
+      g.fillStyle(PRINT_PALETTE.cobalt, 0.08);
+      g.fillRoundedRect(gx + 5, gy + 7, gw, gh, 5);
+    }
 
     // Translucent vellum paper sheet
-    g.fillStyle(PRINT_PALETTE.ghostTint, 0.44);
+    g.fillStyle(PRINT_PALETTE.ghostTint, isElevated ? 0.48 : 0.44);
     g.fillRoundedRect(gx, gy, gw, gh, 5);
 
     // Cobalt printmaker frame + corner drag handles
-    g.lineStyle(2, PRINT_PALETTE.cobalt, 0.72);
+    g.lineStyle(isElevated ? 2.4 : 2, PRINT_PALETTE.cobalt, isElevated ? 0.9 : 0.72);
     g.strokeRoundedRect(gx, gy, gw, gh, 5);
 
     // Corner grip brackets indicating draggable Ghost layer
@@ -895,7 +920,7 @@ export class MisprintScene extends Phaser.Scene {
       [gx + 10, gy + gh - 10, 1, -1],
       [gx + gw - 10, gy + gh - 10, -1, -1],
     ] as const;
-    g.lineStyle(2.5, PRINT_PALETTE.cobalt, 0.85);
+    g.lineStyle(2.5, PRINT_PALETTE.cobalt, isElevated ? 0.98 : 0.85);
     for (const [bx, by, sx, sy] of brackets) {
       g.lineBetween(bx, by, bx + sx * 14, by);
       g.lineBetween(bx, by, bx, by + sy * 14);
@@ -1201,8 +1226,20 @@ export class MisprintScene extends Phaser.Scene {
 
   private syncVisuals(dtSec: number): void {
     const dragging = this.inputController.getState().isDragging;
-    const inkLift = dragging && this.activeDragLayer === 'ink' ? -2 : 0;
-    const ghostLift = dragging && this.activeDragLayer === 'ghost' ? -2 : 0;
+    const isDraggingGhost = dragging && this.activeDragLayer === 'ghost';
+    const inkLift = dragging && this.activeDragLayer === 'ink' ? -3 : 0;
+    const ghostLift = isDraggingGhost ? -3 : 0;
+
+    if (isDraggingGhost !== this.wasElevatedGhost) {
+      this.drawGhostSheetBase(isDraggingGhost);
+    }
+
+    // Subtle paper tilt inertia during drag
+    const targetTilt = isDraggingGhost
+      ? Math.max(-0.018, Math.min(0.018, this.pendingScreenDelta.x * 0.0008))
+      : 0;
+    this.ghostLayerRotation += (targetTilt - this.ghostLayerRotation) * Math.min(1, dtSec * 14);
+
     this.inkLayerContainer.setPosition(
       this.snapshot.inkOffset.x,
       this.snapshot.inkOffset.y + inkLift,
@@ -1211,6 +1248,13 @@ export class MisprintScene extends Phaser.Scene {
       this.snapshot.ghostOffset.x,
       this.snapshot.ghostOffset.y + ghostLift,
     );
+    this.ghostLayerContainer.setRotation(this.ghostLayerRotation);
+
+    // Goal Postbox delivered state update
+    const goalKey = this.snapshot.status === 'won' ? 'goal-postbox-delivered' : 'goal-postbox';
+    if (this.goalSprite.texture.key !== goalKey && this.textures.exists(goalKey)) {
+      this.goalSprite.setTexture(goalKey);
+    }
 
     // Update moving Press Rollers
     for (const obsState of this.snapshot.movingObstacles) {
@@ -1350,6 +1394,10 @@ export class MisprintScene extends Phaser.Scene {
         const goalWorld = localToWorld(this.level.goalPos, this.snapshot.inkOffset);
         this.spawnBurst(goalWorld.x, goalWorld.y - 26, PRINT_PALETTE.vermilion, 18);
         this.spawnBurst(goalWorld.x, goalWorld.y - 26, PRINT_PALETTE.ochre, 14);
+        this.spawnBurst(goalWorld.x, goalWorld.y - 26, PRINT_PALETTE.sage, 12);
+        if (this.textures.exists('goal-postbox-delivered')) {
+          this.goalSprite.setTexture('goal-postbox-delivered');
+        }
         this.syncVisuals(dtSec);
         this.pushHudState(true);
         this.callbacks?.onOutcome('won', this.buildHudState());
